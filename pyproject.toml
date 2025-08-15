@@ -7,6 +7,7 @@ requires-python = ">=3.11"
 dependencies = [
     "browser-use>=0.5.9",
     "e2b-code-interpreter>=1.5.2",
+    "ipykernel>=6.30.1",
     "matplotlib>=3.10.5",
     "openai>=1.98.0",
     "pillow>=11.3.0",

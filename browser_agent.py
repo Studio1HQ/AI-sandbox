@@ -3,12 +3,15 @@ from typing import Tuple
 from browser_use import Agent, BrowserProfile, BrowserSession, Controller
 from browser_use.llm import ChatOpenAI
 from pydantic import BaseModel
+from rich.console import Console
+from rich.panel import Panel
 
+console = Console()
 
-class DownloadedFileName(BaseModel):
-    """Output model for getting the name of the downloaded file"""
+class DownloadedFileNames(BaseModel):
+    """Output model for getting the names of the downloaded files"""
 
-    name_of_file_with_extension: str
+    names_of_file_with_extension: list[str]
 
 
 async def downloading_task_for_browser_agent(
@@ -18,13 +21,13 @@ async def downloading_task_for_browser_agent(
     model_api_base_url: str,
     use_vision: bool = True,
     download_dir_path: str = "./Download",
-) -> Tuple[str, str]:
+) -> Tuple[str, list[str]]:
     """
     Will perform the user's download task via browser use and return download directory path and the
-    downloaded file's name
+    downloaded files names.
 
     Returns:
-        Tuple of (download_directory, filename_with_extension)
+        Tuple of (download_directory, filenames_with_extension)
     """
 
     agent = Agent(
@@ -38,13 +41,35 @@ async def downloading_task_for_browser_agent(
             )
         ),  # set the download directory path for the browser.
         controller=Controller(
-            output_model=DownloadedFileName
+            output_model=DownloadedFileNames
         ),  # Get the agent to output the name of the downloaded file at the end of the task.
     )
 
-    all_result = await agent.run()
-    file_name_with_extension = DownloadedFileName.model_validate_json(
-        all_result.final_result()
-    ).name_of_file_with_extension  # parse the final agent result to get the file name.
+    try:
+        all_result = await agent.run()
+        file_names_with_extension = DownloadedFileNames.model_validate_json(
+            all_result.final_result()
+        ).names_of_file_with_extension  # parse the final agent result to get the file name.
 
-    return (download_dir_path, file_name_with_extension)
+        if file_names_with_extension:
+            console.print(
+                Panel(
+                    f"[bold green]Downloaded files:[/bold green] {file_names_with_extension} to {download_dir_path}",
+                    title="Downloaded Files",
+                    border_style="green",
+                )
+            )
+        else:
+            raise Exception("No files downloaded")
+    
+    except Exception as e:
+        file_names_with_extension = None
+        console.print(
+            Panel(
+                f"[bold red]Error:[/bold red] {e}",
+                title="Execution Error",
+                border_style="red",
+            )
+        )
+
+    return (download_dir_path, file_names_with_extension)

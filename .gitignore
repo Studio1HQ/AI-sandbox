@@ -14,3 +14,10 @@ wheels/
 
 # Browser user data
 browser_user_data
+
+# Saved_images
+temp*
+
+# Download
+Download/
+

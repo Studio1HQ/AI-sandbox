@@ -18,8 +18,8 @@ console = Console()
 
 
 def start_eda(
-    dataset_path: str,
-    dataset_file_name: str,
+    dataset_paths: list[str],
+    dataset_file_names: list[str],
     api_key_for_sandbox_and_model: str,
     model_api_base_url: str,
     sandbox_domain: str,
@@ -42,16 +42,16 @@ def start_eda(
             f"[bold cyan]Started Sandbox[/bold cyan] (id: {sandbox.sandbox_id})"
         )
         console.print(
-            f"[yellow]Uploading dataset at {dataset_path} to Sandbox[/yellow] (id: {sandbox.sandbox_id})"
+            f"[yellow]Uploading dataset(s) at {dataset_paths} to Sandbox[/yellow] (id: {sandbox.sandbox_id})"
         )
 
-        sandbox_eda.upload_file_to_sandbox(dataset_path, dataset_file_name)
+        sandbox_eda.upload_files_to_sandbox(dataset_paths, dataset_file_names)
 
         console.print(
-            f"[bold cyan]Dataset {dataset_path} uploaded to Sandbox[/bold cyan] (id: {sandbox.sandbox_id})"
+            f"[bold cyan]Dataset(s) {dataset_paths} uploaded to Sandbox[/bold cyan] (id: {sandbox.sandbox_id})"
         )
 
-        sandbox_eda.eda_chat(dataset_file_name)
+        sandbox_eda.eda_chat(dataset_file_names)
 
         console.print(
             f"\n\n[bold cyan]------ EDA Session Completed for Sandbox (id: {sandbox.sandbox_id}) ------[/]"
@@ -63,7 +63,7 @@ def start_eda(
 # MAIN MENU CHOICES
 async def choice_download_dataset(
     api_key: str, model_api_base_url: str, model_for_browser_agent: str
-) -> None | Tuple[str, str]:
+) -> None | Tuple[str, list[str]]:
 
     console.print(
         Panel(
@@ -81,19 +81,27 @@ async def choice_download_dataset(
 
     if choice == "1":
         default_dataset_task = "Go to huggingface and search for An-j96/SuperstoreData then go to the files tab and just download the data.csv, then stop."
-        download_path, filename = await downloading_task_for_browser_agent(
+        download_path, filenames = await downloading_task_for_browser_agent(
             default_dataset_task, api_key, model_for_browser_agent, model_api_base_url
         )
-        return download_path, filename
+
+        if filenames is None:
+            return # returns to main menu
+
+        return download_path, filenames
 
     elif choice == "2":
         dataset_download_task = Prompt.ask(
             "\n[bold yellow]Enter the download instructions[/bold yellow]"
         )
-        download_path, filename = await downloading_task_for_browser_agent(
+        download_path, filenames = await downloading_task_for_browser_agent(
             dataset_download_task, api_key, model_for_browser_agent, model_api_base_url
         )
-        return download_path, filename
+
+        if filenames is None:
+            return # returns to main menu
+
+        return download_path, filenames
 
     elif choice == "3":
         return
@@ -162,8 +170,6 @@ async def main(
             "\n[bold yellow]Enter your choice[/bold yellow]", choices=["1", "2", "3"]
         ).strip()
 
-        DATASET_PATH = ""
-
         if choice == "1":
             result = await choice_download_dataset(
                 api_key_for_sandbox_and_model,
@@ -171,20 +177,17 @@ async def main(
                 model_for_browser_agent,
             )
             if result:
-                download_path, filename = result
-                DATASET_PATH = f"{download_path}/{filename}"
-                DATASET_FILE_NAME = filename
-                console.print(
-                    f"[bold green]Dataset downloaded successfully to {download_path}/{filename}[/bold green]"
-                )
+                download_path, filenames = result
+                DATASET_PATHS = [f"{download_path}/{filename}" for filename in filenames]
+                DATASET_FILE_NAMES = filenames
             else:
                 continue  # User returned to main menu
 
         elif choice == "2":
             result = choice_proceed_with_already_downloaded_dataset()
             if result:
-                DATASET_PATH = result
-                DATASET_FILE_NAME = os.path.basename(result)
+                DATASET_PATHS = [result]
+                DATASET_FILE_NAMES = [os.path.basename(result)]
             else:
                 continue  # since user click back to main menu.
 
@@ -193,8 +196,8 @@ async def main(
 
         # Start the EDA session
         start_eda(
-            DATASET_PATH,
-            DATASET_FILE_NAME,
+            DATASET_PATHS,
+            DATASET_FILE_NAMES,
             api_key_for_sandbox_and_model,
             model_api_base_url,
             sandbox_domain,
@@ -207,7 +210,7 @@ if __name__ == "__main__":
     NOVITA_BASE_URL = os.getenv("NOVITA_BASE_URL")
     NOVITA_E2B_DOMAIN = os.getenv("NOVITA_E2B_DOMAIN")
     NOVITA_E2B_TEMPLATE = os.getenv("NOVITA_E2B_TEMPLATE")
-    NOVITA_MODEL_FOR_BROWSER_AGENT = "google/gemma-3-27b-it"
+    NOVITA_MODEL_FOR_BROWSER_AGENT = "zai-org/glm-4.5v"
 
     asyncio.run(
         main(

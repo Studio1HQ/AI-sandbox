@@ -148,7 +148,7 @@ def display_images_if_possible(image_outputs, cols=2, figsize=(10, 5)):
         plt.title(f"Image {i+1}")
 
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False) # continue running the program while the plot is open
 
 
 class SandboxEDA:
@@ -158,7 +158,7 @@ class SandboxEDA:
         sandbox: Sandbox,
         model_api_base_url: str,
         model_api_key: str,
-        max_consecutive_function_calls_allowed: int = 8,
+        max_consecutive_function_calls_allowed: int = 12,
     ):
         self.sandbox = sandbox
         self.model_api_base_url = model_api_base_url
@@ -167,20 +167,21 @@ class SandboxEDA:
             max_consecutive_function_calls_allowed
         )
 
-    def upload_file_to_sandbox(self, file_path: str, file_name_in_sandbox: str):
+    def upload_files_to_sandbox(self, file_paths: list[str], file_names_in_sandbox: list[str]):
         """
-        Uploads a file to the sandbox.
+        Uploads files to the sandbox.
 
         Args:
-            file_path (str): File path of the file to upload (eg ./Download/data.csv).
-            file_name_in_sandbox (str): The name the file will take in the sandbox (eg data.csv).
+            file_paths (list[str]): File paths of the files to upload (eg ["./Download/data.csv", "./Download/data2.csv"]).
+            file_names_in_sandbox (list[str]): The names the files will take in the sandbox (eg ["data.csv", "data2.csv"]).
 
         Note:
-            The file will be uploaded to the sandbox's /home/user directory (e.g ./home/user/data.csv).
+            The files will be uploaded to the sandbox's /home/user directory (e.g ./home/user/data.csv, ./home/user/data2.csv).
         """
 
-        with open(file_path, "rb") as file:
-            self.sandbox.files.write(file_name_in_sandbox, file)
+        for file_path, file_name_in_sandbox in zip(file_paths, file_names_in_sandbox):
+            with open(file_path, "rb") as file:
+                self.sandbox.files.write(file_name_in_sandbox, file)
 
     def run_python_code(self, python_code: str) -> dict:
         """
@@ -244,14 +245,14 @@ class SandboxEDA:
 
     def eda_chat(
         self,
-        downloaded_dataset_name: str,
+        downloaded_dataset_names: list[str],
         model_for_eda: str = "qwen/qwen3-235b-a22b-instruct-2507",
     ):
         """
         Interactive EDA session with AI agent capable of code execution and terminal commands
 
         Args:
-            downloaded_dataset_name (str): The name of the downloaded dataset.
+            downloaded_dataset_names (list[str]): The names of the downloaded datasets.
             model_for_eda (str, optional): The underlying model to use.
         """
 
@@ -273,7 +274,7 @@ class SandboxEDA:
             {
                 "role": "system",
                 "content": SYSTEM_PROMPT.format(
-                    downloaded_dataset_name=downloaded_dataset_name,
+                    downloaded_dataset_names=str(downloaded_dataset_names),
                     list_sandbox_files=str(self.list_files_in_sandbox_main_dir()),
                     available_function_calls_schema=str(
                         AVAILABLE_FUNCTION_CALL_SCHEMAS

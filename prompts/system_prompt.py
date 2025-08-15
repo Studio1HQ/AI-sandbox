@@ -23,7 +23,7 @@ Function Call Guidelines:
 - Don't just assume the user will read the output of the tool call respond to them with your answer.
 
 
-Be a helpful assistant to the user who is probably trying to perform EDA on the dataset file at (/home/user/{downloaded_dataset_name})
+Be a helpful assistant to the user who is probably trying to perform EDA on dataset files ({downloaded_dataset_names}) at (/home/user/) directory.
 
 You can perform the following function calls:
 {available_function_calls_schema}
