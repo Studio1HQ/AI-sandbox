@@ -18,13 +18,14 @@ console = Console()
 
 
 def start_eda(
+    model_for_eda: str,
     dataset_paths: list[str],
     dataset_file_names: list[str],
     api_key_for_sandbox_and_model: str,
     model_api_base_url: str,
     sandbox_domain: str,
     sandbox_template: str,
-    sandbox_timeout: int = 600,  # 600 seconds (10 minutes)
+    sandbox_timeout: int,
 ):
 
     with Sandbox(
@@ -41,17 +42,10 @@ def start_eda(
         console.print(
             f"[bold cyan]Started Sandbox[/bold cyan] (id: {sandbox.sandbox_id})"
         )
-        console.print(
-            f"[yellow]Uploading dataset(s) at {dataset_paths} to Sandbox[/yellow] (id: {sandbox.sandbox_id})"
-        )
 
         sandbox_eda.upload_files_to_sandbox(dataset_paths, dataset_file_names)
 
-        console.print(
-            f"[bold cyan]Dataset(s) {dataset_paths} uploaded to Sandbox[/bold cyan] (id: {sandbox.sandbox_id})"
-        )
-
-        sandbox_eda.eda_chat(dataset_file_names)
+        sandbox_eda.eda_chat(dataset_file_names, model_for_eda)
 
         console.print(
             f"\n\n[bold cyan]------ EDA Session Completed for Sandbox (id: {sandbox.sandbox_id}) ------[/]"
@@ -107,11 +101,11 @@ async def choice_download_dataset(
         return
 
 
-def choice_proceed_with_already_downloaded_dataset() -> str:
+def choice_proceed_with_already_downloaded_datasets() -> list[str]:
     console.print(
         Panel(
             "[bold green]1.[/bold green] Use default dataset (assumes was previously downloaded to './Download/data.csv')\n"
-            "[bold green]2.[/bold green] Provide path to your desired dataset\n"
+            "[bold green]2.[/bold green] Provide path to your desired dataset(s)\n"
             "[bold green]3.[/bold green] Back to main menu",
             title="Proceed with Existing Dataset",
             border_style="white",
@@ -123,31 +117,35 @@ def choice_proceed_with_already_downloaded_dataset() -> str:
     ).strip()
 
     if choice == "1":
-        path = "./Download/data.csv"
+        paths = ["./Download/data.csv"]
     elif choice == "2":
-        path = Prompt.ask(
-            "\n[bold yellow]Enter path to your dataset (e.g. ./Download/custom.csv)[/bold yellow]"
-        ).strip()
+        paths = Prompt.ask(
+            "\n[bold yellow]Enter dataset path (single path) or multiple paths separated by commas (e.g., ./Download/data.csv, ./Download/readme.md)[/bold yellow]"
+        ).split(",")
+        paths = [path.strip() for path in paths]
     elif choice == "3":
         return
 
     try:
-        if not os.path.isfile(path):
-            raise FileNotFoundError(f"File does not exist at path: {path}")
+        for path in paths:
+            if not os.path.isfile(path):
+                raise FileNotFoundError(f"File does not exist at path: {path}")
 
     except FileNotFoundError as e:
         console.print(f"[bold red]{e}[/bold red]")
         return  # return to main menu
 
-    return path
+    return paths
 
 
 async def main(
     api_key_for_sandbox_and_model: str,
     model_api_base_url: str,
     model_for_browser_agent: str,
+    model_for_eda: str,
     sandbox_domain: str,
     sandbox_template: str,
+    sandbox_timeout_seconds: int
 ):
 
     while True:
@@ -184,10 +182,10 @@ async def main(
                 continue  # User returned to main menu
 
         elif choice == "2":
-            result = choice_proceed_with_already_downloaded_dataset()
+            result = choice_proceed_with_already_downloaded_datasets()
             if result:
-                DATASET_PATHS = [result]
-                DATASET_FILE_NAMES = [os.path.basename(result)]
+                DATASET_PATHS = result
+                DATASET_FILE_NAMES = [os.path.basename(path) for path in result]
             else:
                 continue  # since user click back to main menu.
 
@@ -196,12 +194,14 @@ async def main(
 
         # Start the EDA session
         start_eda(
+            model_for_eda,
             DATASET_PATHS,
             DATASET_FILE_NAMES,
             api_key_for_sandbox_and_model,
             model_api_base_url,
             sandbox_domain,
             sandbox_template,
+            sandbox_timeout_seconds
         )
 
 
@@ -211,13 +211,17 @@ if __name__ == "__main__":
     NOVITA_E2B_DOMAIN = os.getenv("NOVITA_E2B_DOMAIN")
     NOVITA_E2B_TEMPLATE = os.getenv("NOVITA_E2B_TEMPLATE")
     NOVITA_MODEL_FOR_BROWSER_AGENT = "zai-org/glm-4.5v"
+    NOVITA_MODEL_FOR_EDA = "qwen/qwen3-235b-a22b-instruct-2507"
+    NOVITA_SANDBOX_TIMEOUT_SECONDS = 900 # 900 seconds (15 minutes), sandbox instance will be killed automatically after.
 
     asyncio.run(
         main(
             NOVITA_API_KEY,
             NOVITA_BASE_URL,
             NOVITA_MODEL_FOR_BROWSER_AGENT,
+            NOVITA_MODEL_FOR_EDA,
             NOVITA_E2B_DOMAIN,
             NOVITA_E2B_TEMPLATE,
+            NOVITA_SANDBOX_TIMEOUT_SECONDS
         )
     )

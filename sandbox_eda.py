@@ -4,13 +4,15 @@ import json
 import time
 
 import matplotlib.pyplot as plt
-from e2b_code_interpreter import Sandbox
+from e2b_code_interpreter import Sandbox, FileType
 from openai import OpenAI
 from PIL import Image
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt
 from rich.table import Table
+import shutil
+from pathlib import Path
 
 from prompts.system_prompt import SYSTEM_PROMPT
 
@@ -48,6 +50,44 @@ AVAILABLE_FUNCTION_CALL_SCHEMAS = [
                     }
                 },
                 "required": ["command"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "sync_with_user",
+            "description": "Will sync a file or directory on sandbox, to the sync folder on the user's computer",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "sandbox_path": {
+                        "type": "string",
+                        "description": "Path to the file or directory on the sandbox.",
+                    },
+                    "path_on_user_sync_folder": {
+                        "type": "string",
+                        "description": "Relative path where the file or directory will be placed inside the user's sync folder. For example, '/hello.txt' goes directly in the sync folder, while '/run1/hello.txt' will be placed in a 'run1' subfolder within the sync folder."
+                    }
+                },
+                "required": ["sandbox_path", "path_on_user_sync_folder"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_from_user_sync_folder",
+            "description": "Will delete a file or directory from the sync folder on the user's computer",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path_on_user_sync_folder": {
+                        "type": "string",
+                        "description": "Relative path to the file or directory on the user's sync folder. For example, '/hello.txt' will delete it directly from the sync folder, while '/run1/hello.txt' will delete it directly from 'run1' subfolder within the sync folder."
+                    }
+                },
+                "required": ["path_on_user_sync_folder"],
             },
         },
     },
@@ -96,7 +136,6 @@ def display_sandbox_code_output(code_result: dict):
             )
         )
 
-
 def display_sandbox_command_output(command_result: dict):
     """
     Beautifully display the output from sandbox command execution.
@@ -124,31 +163,22 @@ def display_sandbox_command_output(command_result: dict):
             )
         )
 
-
-def display_images_if_possible(image_outputs, cols=2, figsize=(10, 5)):
+def display_images_if_possible(image_outputs):
     """
-    Displays the images in a grid on stdout or external app if possible.
+    Displays the images on stdout or matplotlib figure viewer if possible.
 
     Args:
         image_outputs (list): The base64 encoded images.
-        cols (int): Number of columns in the grid.
-        figsize (tuple): Figure size for each image in the grid.
     """
-
-    rows = (len(image_outputs) + cols - 1) // cols  # ceiling division
-
-    plt.figure(figsize=figsize)
 
     for i, b64image in enumerate(image_outputs):
         image_data = base64.b64decode(b64image)
         image = Image.open(io.BytesIO(image_data))
-        plt.subplot(rows, cols, i + 1)
-        plt.imshow(image)
-        plt.axis("off")
-        plt.title(f"Image {i+1}")
 
-    plt.tight_layout()
-    plt.show(block=False) # continue running the program while the plot is open
+        plt.figure()          # create a new figure for each image
+        plt.imshow(image)     # display the image
+        plt.axis('off')       # turn off axis
+        plt.show(block=False) # continue running the program while the plot is open
 
 
 class SandboxEDA:
@@ -158,7 +188,7 @@ class SandboxEDA:
         sandbox: Sandbox,
         model_api_base_url: str,
         model_api_key: str,
-        max_consecutive_function_calls_allowed: int = 12,
+        max_consecutive_function_calls_allowed: int = 30,
     ):
         self.sandbox = sandbox
         self.model_api_base_url = model_api_base_url
@@ -179,9 +209,17 @@ class SandboxEDA:
             The files will be uploaded to the sandbox's /home/user directory (e.g ./home/user/data.csv, ./home/user/data2.csv).
         """
 
+        console.print(
+            f"[yellow]Uploading files(s) at {file_paths} to Sandbox[/yellow] (id: {self.sandbox.sandbox_id})"
+        )
+
         for file_path, file_name_in_sandbox in zip(file_paths, file_names_in_sandbox):
             with open(file_path, "rb") as file:
                 self.sandbox.files.write(file_name_in_sandbox, file)
+
+        console.print(
+            f"[bold cyan]Files(s) {file_paths} uploaded to Sandbox[/bold cyan] (id: {self.sandbox.sandbox_id})"
+        )
 
     def run_python_code(self, python_code: str) -> dict:
         """
@@ -197,10 +235,13 @@ class SandboxEDA:
 
         image_outputs = [result.png for result in execution.results if result.png]
 
-        # Iterate through the base64 encoded images and save them to a file with name format: temp-{timestamp}.png
+        # Iterate through the base64 encoded images and save them to a file with name format: temp-{timestamp}.png to ./temp_image_output dir
         for b64_image in image_outputs:
             timestamp = int(time.time())
-            image_filename = f"temp-{timestamp}.png"
+            image_filename = Path(f"./temp_image_output/temp-{timestamp}.png")
+
+            # Will create the temp_image_output directory if it doesn't exist already.
+            image_filename.parent.mkdir(parents=True, exist_ok=True)
 
             with open(image_filename, "wb") as f:
                 f.write(base64.b64decode(b64_image))
@@ -240,13 +281,88 @@ class SandboxEDA:
         except Exception as e:
             return {"output": None, "execution error": str(e)}
 
+
+    def sync_with_user(self, sandbox_path, path_on_user_sync_folder):
+        """
+        Downloads a file or directory from the sandbox to the user's sync folder.
+
+        Args:
+            sandbox_path (str): The path of the file or directory to sync in the sandbox.
+            path_on_user_sync_folder (str): The relative destination path of the file or directory in the user's sync folder.
+
+        Returns:
+            str: "Sync Successful" if the file or directory was synced successfully, otherwise an error message.
+        """
+
+        try:
+            path_info = self.sandbox.files.get_info(sandbox_path)
+
+            if path_info.type == FileType.DIR:
+                # If its a directory loop through the contents and download them.
+                dir_contents = self.sandbox.files.list(sandbox_path)
+                for content in dir_contents:
+                    path_to_content_in_sync_folder = Path(path_on_user_sync_folder).joinpath(content.name)
+                    self.sync_with_user(content.path, path_to_content_in_sync_folder)
+
+            elif path_info.type == FileType.FILE:
+                # Ensure the file is always inside ./sync_folder.
+                sandbox_path_obj = Path(path_on_user_sync_folder)
+    
+                # Make the path relative by stripping any root or drive component
+                relative_path = sandbox_path_obj.relative_to(sandbox_path_obj.anchor or ".")
+
+                # Final path inside sync_folder
+                file_path = Path("sync_folder") / relative_path
+
+                # Will create any directory in the path that doesn't exist already.
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+
+                # Download the file to sync folder.
+                file_content = self.sandbox.files.read(sandbox_path, 'bytes')
+                with open(file_path, 'wb') as f:
+                    f.write(file_content)
+
+            return "Sync Successful"
+
+        except Exception as e:
+            return e
+
+    def delete_from_user_sync_folder(self, path_on_user_sync_folder):
+        """
+        Deletes a file or directory from the user sync folder.
+
+        Args:
+            path_on_user_sync_folder (str): The path of the file or directory to delete in the user sync folder.
+
+        Returns:
+            str: "Deletion Successful" if the file or directory was deleted successfully, otherwise an error message.
+        """
+
+        delete_path = Path('./sync_folder').joinpath(path_on_user_sync_folder)
+
+        try:
+            if not delete_path.exists():
+                raise Exception(f"File or Directory does not exist at {path_on_user_sync_folder} in sync folder.")
+        
+            if delete_path.is_file():
+                delete_path.unlink()
+
+            elif delete_path.is_dir():
+                shutil.rmtree(str(delete_path))
+
+            return "Deletion Successful"
+
+        except Exception as e:
+            return e
+
+
     def list_files_in_sandbox_main_dir(self) -> list[str]:
         return [i.name for i in self.sandbox.files.list("/home/user")]
 
     def eda_chat(
         self,
         downloaded_dataset_names: list[str],
-        model_for_eda: str = "qwen/qwen3-235b-a22b-instruct-2507",
+        model_for_eda: str,
     ):
         """
         Interactive EDA session with AI agent capable of code execution and terminal commands
@@ -341,7 +457,7 @@ class SandboxEDA:
                                         {
                                             "type": "text",
                                             "text": (
-                                                f"THE IMAGES HAS ALREADY BEEN SHOW TO THE USER ON THE TERMINAL AND SAVED TO TEMP FILES eg temp-{{timestamp}}.png, THE OTHER OUTPUTS ARE BELOW\n{code_result['other_outputs']}"
+                                                f"THE IMAGES HAS ALREADY BEEN SHOW TO THE USER ON THE TERMINAL AND SAVED TO TEMP FILES eg temp-{{timestamp}}.png on the user's computer in ./temp_image_output dir, THE OTHER OUTPUTS ARE BELOW\n{code_result['other_outputs']}"
                                                 if code_result["image_outputs"]
                                                 else f"{code_result['other_outputs']}"
                                             ),
@@ -373,6 +489,78 @@ class SandboxEDA:
 
                             display_sandbox_command_output(command_result)
 
+                        elif name == "sync_with_user":
+                            console.print(
+                                Panel(
+                                    f"[bold yellow]Agent Started Syncing {args['sandbox_path']} To User's Sync Folder ({args['path_on_user_sync_folder']})[/bold yellow]",
+                                    title="File Syncing",
+                                    border_style="white",
+                                )
+                            )
+
+                            sync_result = self.sync_with_user(args["sandbox_path"], args["path_on_user_sync_folder"])
+                            messages.append(
+                                {
+                                    "tool_call_id": tool_call.id,
+                                    "role": "tool",  # Indicates this message is from tool use
+                                    "name": name,
+                                    "content": str(sync_result),
+                                }
+                            )
+
+                            if sync_result == "Sync Successful":
+                                console.print(
+                                    Panel(
+                                            f"[bold green]Agent Successfully Synced File(s) To User's Sync Folder ({args['path_on_user_sync_folder']})[/bold green]",
+                                            title="File Syncing",
+                                            border_style="white",
+                                    )
+                                )
+                            else:
+                                console.print(
+                                    Panel(
+                                            f"[bold red]Agent Failed To Sync File(s) To User's Sync Folder: {sync_result}[/bold red]",
+                                            title="File Syncing",
+                                            border_style="white",
+                                    )
+                                )
+
+                        elif name == "delete_from_user_sync_folder":
+                            console.print(
+                                Panel(
+                                    f"[bold yellow]Agent Deleting File(s) From User's Sync Folder ({args['path_on_user_sync_folder']})[/bold yellow]",
+                                    title="File Syncing",
+                                    border_style="white",
+                                )
+                            )
+
+                            delete_result = self.delete_from_user_sync_folder(args["path_on_user_sync_folder"])
+                            messages.append(
+                                {
+                                    "tool_call_id": tool_call.id,
+                                    "role": "tool",  # Indicates this message is from tool use
+                                    "name": name,
+                                    "content": str(delete_result),
+                                }
+                            )
+
+                            if delete_result == "Deletion Successful":
+                                console.print(
+                                    Panel(
+                                            f"[bold green]Agent Successfully Deleted File(s) From User's Sync Folder ({args['path_on_user_sync_folder']})[/bold green]",
+                                            title="File Syncing",
+                                            border_style="white",
+                                    )
+                                )
+                            else:
+                                console.print(
+                                    Panel(
+                                            f"[bold red]Agent Failed To Delete File(s) From User's Sync Folder: {delete_result}[/bold red]",
+                                            title="File Syncing",
+                                            border_style="white",
+                                    )
+                                )
+
                         else:
                             raise ValueError(f"Unknown Function Call: {name}")
 
@@ -385,3 +573,4 @@ class SandboxEDA:
                         f"[bold green]>>> Assistant Response: {response_message.content} [/]"
                     )
                     break
+
