@@ -61,10 +61,9 @@ NOVITA_API_KEY = "<your-novita-api-key>"
 NOVITA_BASE_URL = "https://api.novita.ai/v3/openai"
 
 NOVITA_E2B_DOMAIN = "sandbox.novita.ai"
-NOVITA_E2B_TEMPLATE = "23j9hy90m6r461w7nkrn"
+NOVITA_E2B_TEMPLATE = "code-interpreter-v1"
 ```
 
-**Note:** The template ID above is the code-interpreter-v1 Novita sandbox template.
 
 ### 5. Run the Application
 
@@ -81,6 +80,16 @@ uv run main.py
 
 **3.**
 ![Screenshot_3](/screenshots/screenshot_3.png)
+
+## 📽️ Demo
+Creating a website with insight and analysis from a dataset
+
+
+
+https://github.com/user-attachments/assets/1488786a-a0f4-483c-b64b-0450fa36bb5a
+
+
+
 
 
 

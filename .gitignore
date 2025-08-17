@@ -14,3 +14,14 @@ wheels/
 
 # Browser user data
 browser_user_data
+
+# Download
+Download/
+
+# Temp image output
+temp_image_output
+
+# Sync folder
+sync_folder
+
+
