@@ -2,7 +2,6 @@ import asyncio
 import os
 from typing import Tuple
 
-# Load environment variables from .env file
 from dotenv import load_dotenv
 from e2b_code_interpreter import Sandbox
 from rich.console import Console
@@ -12,6 +11,7 @@ from rich.prompt import Prompt
 from browser_agent import downloading_task_for_browser_agent
 from sandbox_eda import SandboxEDA
 
+# Load environment variables from .env file
 load_dotenv()
 
 console = Console()
@@ -211,7 +211,7 @@ if __name__ == "__main__":
     NOVITA_E2B_DOMAIN = os.getenv("NOVITA_E2B_DOMAIN")
     NOVITA_E2B_TEMPLATE = os.getenv("NOVITA_E2B_TEMPLATE")
     NOVITA_MODEL_FOR_BROWSER_AGENT = "zai-org/glm-4.5v"
-    NOVITA_MODEL_FOR_EDA = "qwen/qwen3-235b-a22b-instruct-2507"
+    NOVITA_MODEL_FOR_EDA = "qwen/qwen3-coder-480b-a35b-instruct"
     NOVITA_SANDBOX_TIMEOUT_SECONDS = 900 # 900 seconds (15 minutes), sandbox instance will be killed automatically after.
 
     asyncio.run(

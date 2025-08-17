@@ -46,10 +46,10 @@ async def downloading_task_for_browser_agent(
     )
 
     try:
-        all_result = await agent.run()
+        all_results = await agent.run()
         file_names_with_extension = DownloadedFileNames.model_validate_json(
-            all_result.final_result()
-        ).names_of_file_with_extension  # parse the final agent result to get the file name.
+            all_results.final_result()
+        ).names_of_file_with_extension  # parse the final agent result to get the file names.
 
         if file_names_with_extension:
             console.print(

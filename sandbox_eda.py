@@ -99,7 +99,7 @@ def display_sandbox_code_output(code_result: dict):
     Beautifully display the output from sandbox code execution.
 
     Args:
-        code_result (dict): Sandbox execution results withstructure:
+        code_result (dict): Sandbox execution results with structure:
             {
                 "image_outputs": list[base64 images],
                 "other_outputs": {
@@ -337,8 +337,14 @@ class SandboxEDA:
         Returns:
             str: "Deletion Successful" if the file or directory was deleted successfully, otherwise an error message.
         """
+        # Ensure the file is always inside ./sync_folder.
+        sandbox_path_obj = Path(path_on_user_sync_folder)
 
-        delete_path = Path('./sync_folder').joinpath(path_on_user_sync_folder)
+        # Make the path relative by stripping any root or drive component
+        relative_path = sandbox_path_obj.relative_to(sandbox_path_obj.anchor or ".")
+
+        # Final path inside sync_folder
+        delete_path = Path("sync_folder") / relative_path
 
         try:
             if not delete_path.exists():
