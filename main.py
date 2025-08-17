@@ -80,7 +80,7 @@ async def choice_download_dataset(
         )
 
         if filenames is None:
-            return # returns to main menu
+            return  # returns to main menu
 
         return download_path, filenames
 
@@ -93,7 +93,7 @@ async def choice_download_dataset(
         )
 
         if filenames is None:
-            return # returns to main menu
+            return  # returns to main menu
 
         return download_path, filenames
 
@@ -145,7 +145,7 @@ async def main(
     model_for_eda: str,
     sandbox_domain: str,
     sandbox_template: str,
-    sandbox_timeout_seconds: int
+    sandbox_timeout_seconds: int,
 ):
 
     while True:
@@ -176,7 +176,9 @@ async def main(
             )
             if result:
                 download_path, filenames = result
-                DATASET_PATHS = [f"{download_path}/{filename}" for filename in filenames]
+                DATASET_PATHS = [
+                    f"{download_path}/{filename}" for filename in filenames
+                ]
                 DATASET_FILE_NAMES = filenames
             else:
                 continue  # User returned to main menu
@@ -201,7 +203,7 @@ async def main(
             model_api_base_url,
             sandbox_domain,
             sandbox_template,
-            sandbox_timeout_seconds
+            sandbox_timeout_seconds,
         )
 
 
@@ -212,7 +214,7 @@ if __name__ == "__main__":
     NOVITA_E2B_TEMPLATE = os.getenv("NOVITA_E2B_TEMPLATE")
     NOVITA_MODEL_FOR_BROWSER_AGENT = "zai-org/glm-4.5v"
     NOVITA_MODEL_FOR_EDA = "qwen/qwen3-coder-480b-a35b-instruct"
-    NOVITA_SANDBOX_TIMEOUT_SECONDS = 900 # 900 seconds (15 minutes), sandbox instance will be killed automatically after.
+    NOVITA_SANDBOX_TIMEOUT_SECONDS = 900  # 900 seconds (15 minutes), sandbox instance will be killed automatically after.
 
     asyncio.run(
         main(
@@ -222,6 +224,6 @@ if __name__ == "__main__":
             NOVITA_MODEL_FOR_EDA,
             NOVITA_E2B_DOMAIN,
             NOVITA_E2B_TEMPLATE,
-            NOVITA_SANDBOX_TIMEOUT_SECONDS
+            NOVITA_SANDBOX_TIMEOUT_SECONDS,
         )
     )

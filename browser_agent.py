@@ -8,6 +8,7 @@ from rich.panel import Panel
 
 console = Console()
 
+
 class DownloadedFileNames(BaseModel):
     """Output model for getting the names of the downloaded files"""
 
@@ -61,7 +62,7 @@ async def downloading_task_for_browser_agent(
             )
         else:
             raise Exception("No files downloaded")
-    
+
     except Exception as e:
         file_names_with_extension = None
         console.print(

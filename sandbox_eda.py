@@ -67,8 +67,8 @@ AVAILABLE_FUNCTION_CALL_SCHEMAS = [
                     },
                     "path_on_user_sync_folder": {
                         "type": "string",
-                        "description": "Relative path where the file or directory will be placed inside the user's sync folder. For example, '/hello.txt' goes directly in the sync folder, while '/run1/hello.txt' will be placed in a 'run1' subfolder within the sync folder."
-                    }
+                        "description": "Relative path where the file or directory will be placed inside the user's sync folder. For example, '/hello.txt' goes directly in the sync folder, while '/run1/hello.txt' will be placed in a 'run1' subfolder within the sync folder.",
+                    },
                 },
                 "required": ["sandbox_path", "path_on_user_sync_folder"],
             },
@@ -84,7 +84,7 @@ AVAILABLE_FUNCTION_CALL_SCHEMAS = [
                 "properties": {
                     "path_on_user_sync_folder": {
                         "type": "string",
-                        "description": "Relative path to the file or directory on the user's sync folder. For example, '/hello.txt' will delete it directly from the sync folder, while '/run1/hello.txt' will delete it directly from 'run1' subfolder within the sync folder."
+                        "description": "Relative path to the file or directory on the user's sync folder. For example, '/hello.txt' will delete it directly from the sync folder, while '/run1/hello.txt' will delete it directly from 'run1' subfolder within the sync folder.",
                     }
                 },
                 "required": ["path_on_user_sync_folder"],
@@ -136,6 +136,7 @@ def display_sandbox_code_output(code_result: dict):
             )
         )
 
+
 def display_sandbox_command_output(command_result: dict):
     """
     Beautifully display the output from sandbox command execution.
@@ -163,6 +164,7 @@ def display_sandbox_command_output(command_result: dict):
             )
         )
 
+
 def display_images_if_possible(image_outputs):
     """
     Displays the images on stdout or matplotlib figure viewer if possible.
@@ -175,10 +177,10 @@ def display_images_if_possible(image_outputs):
         image_data = base64.b64decode(b64image)
         image = Image.open(io.BytesIO(image_data))
 
-        plt.figure()          # create a new figure for each image
-        plt.imshow(image)     # display the image
-        plt.axis('off')       # turn off axis
-        plt.show(block=False) # continue running the program while the plot is open
+        plt.figure()  # create a new figure for each image
+        plt.imshow(image)  # display the image
+        plt.axis("off")  # turn off axis
+        plt.show(block=False)  # continue running the program while the plot is open
 
 
 class SandboxEDA:
@@ -197,7 +199,9 @@ class SandboxEDA:
             max_consecutive_function_calls_allowed
         )
 
-    def upload_files_to_sandbox(self, file_paths: list[str], file_names_in_sandbox: list[str]):
+    def upload_files_to_sandbox(
+        self, file_paths: list[str], file_names_in_sandbox: list[str]
+    ):
         """
         Uploads files to the sandbox.
 
@@ -281,7 +285,6 @@ class SandboxEDA:
         except Exception as e:
             return {"output": None, "execution error": str(e)}
 
-
     def sync_with_user(self, sandbox_path, path_on_user_sync_folder):
         """
         Downloads a file or directory from the sandbox to the user's sync folder.
@@ -301,15 +304,19 @@ class SandboxEDA:
                 # If its a directory loop through the contents and download them.
                 dir_contents = self.sandbox.files.list(sandbox_path)
                 for content in dir_contents:
-                    path_to_content_in_sync_folder = Path(path_on_user_sync_folder).joinpath(content.name)
+                    path_to_content_in_sync_folder = Path(
+                        path_on_user_sync_folder
+                    ).joinpath(content.name)
                     self.sync_with_user(content.path, path_to_content_in_sync_folder)
 
             elif path_info.type == FileType.FILE:
                 # Ensure the file is always inside ./sync_folder.
                 sandbox_path_obj = Path(path_on_user_sync_folder)
-    
+
                 # Make the path relative by stripping any root or drive component
-                relative_path = sandbox_path_obj.relative_to(sandbox_path_obj.anchor or ".")
+                relative_path = sandbox_path_obj.relative_to(
+                    sandbox_path_obj.anchor or "."
+                )
 
                 # Final path inside sync_folder
                 file_path = Path("sync_folder") / relative_path
@@ -318,8 +325,8 @@ class SandboxEDA:
                 file_path.parent.mkdir(parents=True, exist_ok=True)
 
                 # Download the file to sync folder.
-                file_content = self.sandbox.files.read(sandbox_path, 'bytes')
-                with open(file_path, 'wb') as f:
+                file_content = self.sandbox.files.read(sandbox_path, "bytes")
+                with open(file_path, "wb") as f:
                     f.write(file_content)
 
             return "Sync Successful"
@@ -348,8 +355,10 @@ class SandboxEDA:
 
         try:
             if not delete_path.exists():
-                raise Exception(f"File or Directory does not exist at {path_on_user_sync_folder} in sync folder.")
-        
+                raise Exception(
+                    f"File or Directory does not exist at {path_on_user_sync_folder} in sync folder."
+                )
+
             if delete_path.is_file():
                 delete_path.unlink()
 
@@ -360,7 +369,6 @@ class SandboxEDA:
 
         except Exception as e:
             return e
-
 
     def list_files_in_sandbox_main_dir(self) -> list[str]:
         return [i.name for i in self.sandbox.files.list("/home/user")]
@@ -504,7 +512,9 @@ class SandboxEDA:
                                 )
                             )
 
-                            sync_result = self.sync_with_user(args["sandbox_path"], args["path_on_user_sync_folder"])
+                            sync_result = self.sync_with_user(
+                                args["sandbox_path"], args["path_on_user_sync_folder"]
+                            )
                             messages.append(
                                 {
                                     "tool_call_id": tool_call.id,
@@ -517,17 +527,17 @@ class SandboxEDA:
                             if sync_result == "Sync Successful":
                                 console.print(
                                     Panel(
-                                            f"[bold green]Agent Successfully Synced File(s) To User's Sync Folder ({args['path_on_user_sync_folder']})[/bold green]",
-                                            title="File Syncing",
-                                            border_style="white",
+                                        f"[bold green]Agent Successfully Synced File(s) To User's Sync Folder ({args['path_on_user_sync_folder']})[/bold green]",
+                                        title="File Syncing",
+                                        border_style="white",
                                     )
                                 )
                             else:
                                 console.print(
                                     Panel(
-                                            f"[bold red]Agent Failed To Sync File(s) To User's Sync Folder: {sync_result}[/bold red]",
-                                            title="File Syncing",
-                                            border_style="white",
+                                        f"[bold red]Agent Failed To Sync File(s) To User's Sync Folder: {sync_result}[/bold red]",
+                                        title="File Syncing",
+                                        border_style="white",
                                     )
                                 )
 
@@ -540,7 +550,9 @@ class SandboxEDA:
                                 )
                             )
 
-                            delete_result = self.delete_from_user_sync_folder(args["path_on_user_sync_folder"])
+                            delete_result = self.delete_from_user_sync_folder(
+                                args["path_on_user_sync_folder"]
+                            )
                             messages.append(
                                 {
                                     "tool_call_id": tool_call.id,
@@ -553,17 +565,17 @@ class SandboxEDA:
                             if delete_result == "Deletion Successful":
                                 console.print(
                                     Panel(
-                                            f"[bold green]Agent Successfully Deleted File(s) From User's Sync Folder ({args['path_on_user_sync_folder']})[/bold green]",
-                                            title="File Syncing",
-                                            border_style="white",
+                                        f"[bold green]Agent Successfully Deleted File(s) From User's Sync Folder ({args['path_on_user_sync_folder']})[/bold green]",
+                                        title="File Syncing",
+                                        border_style="white",
                                     )
                                 )
                             else:
                                 console.print(
                                     Panel(
-                                            f"[bold red]Agent Failed To Delete File(s) From User's Sync Folder: {delete_result}[/bold red]",
-                                            title="File Syncing",
-                                            border_style="white",
+                                        f"[bold red]Agent Failed To Delete File(s) From User's Sync Folder: {delete_result}[/bold red]",
+                                        title="File Syncing",
+                                        border_style="white",
                                     )
                                 )
 
@@ -579,4 +591,3 @@ class SandboxEDA:
                         f"[bold green]>>> Assistant Response: {response_message.content} [/]"
                     )
                     break
-
