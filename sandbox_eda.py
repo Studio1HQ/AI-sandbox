@@ -434,6 +434,7 @@ class SandboxEDA:
                     model=model_for_eda,
                     messages=messages,
                     tools=AVAILABLE_FUNCTION_CALL_SCHEMAS,
+                    frequency_penalty=0,  # These penalty slightly affects tool use so will set to 0.
                 )
 
                 response_message = response.choices[0].message

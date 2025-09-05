@@ -1,18 +1,32 @@
-from typing import Tuple
+from typing import Tuple, Optional
 
 from browser_use import Agent, BrowserProfile, BrowserSession, Controller
 from browser_use.llm import ChatOpenAI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from rich.console import Console
 from rich.panel import Panel
+from pathlib import Path
 
 console = Console()
 
 
-class DownloadedFileNames(BaseModel):
-    """Output model for getting the names of the downloaded files"""
+class TaskFile(BaseModel):
+    """Represents a file generated as part of a task result e.g. scraped data or researched data."""
 
-    names_of_file_with_extension: list[str]
+    filename: str = Field(..., description="Name of the file including extension")
+    content: str = Field(..., description="Text content to be written into the file")
+
+
+class AgentOutput(BaseModel):
+    """Final aggregated output of the browser agent execution."""
+
+    downloaded_files: Optional[list[str]] = Field(
+        None, description="List of downloaded file names (with extension), if any"
+    )
+    task_files: Optional[list[TaskFile]] = Field(
+        None,
+        description="Files generated from user tasks (e.g., scraped or researched data), if any",
+    )
 
 
 async def downloading_task_for_browser_agent(
@@ -20,7 +34,7 @@ async def downloading_task_for_browser_agent(
     api_key: str,
     model: str,
     model_api_base_url: str,
-    use_vision: bool = True,
+    use_vision: bool = False,
     download_dir_path: str = "./Download",
 ) -> Tuple[str, list[str]]:
     """
@@ -33,38 +47,90 @@ async def downloading_task_for_browser_agent(
 
     agent = Agent(
         task=task,
-        llm=ChatOpenAI(base_url=model_api_base_url, model=model, api_key=api_key),
+        llm=ChatOpenAI(
+            base_url=model_api_base_url,
+            model=model,
+            api_key=api_key,
+            max_completion_tokens=20_000,
+            frequency_penalty=0,  # These penalty slightly affects tool use so will set to 0.
+        ),
         use_vision=use_vision,
-        vision_detail_level="low",  # available options ['low', 'high', 'auto']; note high detail means more token cost; low should suffice for most tasks.
+        vision_detail_level="auto",  # available options ['low', 'high', 'auto']; note high detail means more token cost; low should suffice for most tasks.
         browser_session=BrowserSession(
             browser_profile=BrowserProfile(
                 downloads_path=download_dir_path, user_data_dir="./browser_user_data"
             )
         ),  # set the download directory path for the browser.
         controller=Controller(
-            output_model=DownloadedFileNames
-        ),  # Get the agent to output the name of the downloaded file at the end of the task.
+            output_model=AgentOutput
+        ),  # Have the agent output the task execution result according to the AgentOutput schema.
+        max_failures=5,
     )
 
     try:
+        # Run the agent and structure its output
         all_results = await agent.run()
-        file_names_with_extension = DownloadedFileNames.model_validate_json(
+        final_output: AgentOutput = AgentOutput.model_validate_json(
             all_results.final_result()
-        ).names_of_file_with_extension  # parse the final agent result to get the file names.
+        )
 
-        if file_names_with_extension:
+        if final_output.task_files:
             console.print(
                 Panel(
-                    f"[bold green]Downloaded files:[/bold green] {file_names_with_extension} to {download_dir_path}",
+                    f"[bold yellow]Writing task results to files...[/bold yellow] {final_output.task_files}",
+                    title="Task Results",
+                    border_style="white",
+                )
+            )
+
+        # Write each task result to a file in the download directory
+        task_result_files: list[str] = []
+        for task_file in final_output.task_files or []:
+            file_path = Path(task_file.filename)
+
+            # Prevent path traversal or unsafe absolute paths
+            if file_path.is_absolute() or ".." in file_path.parts:
+                raise ValueError(
+                    f"The agent passed an unsafe file path as a filename: {file_path}"
+                )
+
+            # Point the file path inside the download directory
+            file_path = Path(download_dir_path) / file_path
+
+            # Ensure the download directory exists, else create it.
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Write task result content to a file
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(task_file.content)
+
+            task_result_files.append(task_file.filename)
+
+        if task_result_files:
+            console.print(
+                Panel(
+                    f"[bold green]Task results written to files:[/bold green] {task_result_files}",
+                    title="Task Results",
+                    border_style="white",
+                )
+            )
+
+        # Combine downloaded files with task result files
+        file_results = (final_output.downloaded_files or []) + task_result_files
+
+        if file_results:
+            console.print(
+                Panel(
+                    f"[bold green]Files available:[/bold green] {file_results} in {download_dir_path}",
                     title="Downloaded Files",
                     border_style="green",
                 )
             )
         else:
-            raise Exception("No files downloaded")
+            raise RuntimeError("No files were downloaded or written.")
 
     except Exception as e:
-        file_names_with_extension = None
+        file_results = None
         console.print(
             Panel(
                 f"[bold red]Error:[/bold red] {e}",
@@ -73,4 +139,4 @@ async def downloading_task_for_browser_agent(
             )
         )
 
-    return (download_dir_path, file_names_with_extension)
+    return (download_dir_path, file_results)

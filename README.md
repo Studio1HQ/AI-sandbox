@@ -5,12 +5,13 @@ An example command line application showing how to build an EDA (Exploratory Dat
 ## How it works:
 
 - **Browser Use**:  
-  Takes natural language instructions to navigate websites and download datasets.  
+  Takes natural language instructions to navigate websites and get datasets.  
   _Example_:  
-  > "Go to Hugging Face and search for `An-j96/SuperstoreData`, then go to the files tab and just download the `data.csv`, then stop."
+  > "Go to Hugging Face and search for `An-j96/SuperstoreData`, then go to the files tab and just download the `data.csv`."
+  > "Go to google finance, search for Tesla and get their financials (income statement, balance sheet, cash flow) for the past 3 months."
 
 - **Novita Model API**:  
-  - Vision language model powers the browser use web navigation.  
+  - Vision language model can be used to power the browser use web navigation.  
   - Large language models used to handle the user interaction and manage function calling.
 
 - **Novita AI Sandbox**:  
@@ -45,15 +46,7 @@ source .venv/bin/activate # For Mac/Linux
 uv sync
 ```
 
-### 3. Install Browser Dependencies
-
-The app uses Playwright for web automation. Install the required browser:
-
-```bash
-playwright install chromium
-```
-
-### 4. Environment Configuration
+### 3. Environment Configuration
 Create a .env file in the root directory and add your API key and the below:
 
 ```bash

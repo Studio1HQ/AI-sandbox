@@ -61,33 +61,25 @@ async def choice_download_dataset(
 
     console.print(
         Panel(
-            "[bold green]1.[/bold green] Download default dataset (An-j96/SuperstoreData dataset from HuggingFace) via Browser Use\n"
-            "[bold green]2.[/bold green] Give instruction for browser use to locate desired dataset, click download and STOP (to avoid infinite download check)\n"
-            "[bold green]3.[/bold green] Back to main menu",
+            "[bold green]1.[/bold green] Give detailed instruction for browser use to locate desired dataset\n"
+            "[bold green]2.[/bold green] Back to main menu",
             title="Download Menu",
             border_style="white",
         )
     )
 
     choice = Prompt.ask(
-        "\n[bold yellow]Enter your choice[/bold yellow]", choices=["1", "2", "3"]
+        "\n[bold yellow]Enter your choice[/bold yellow]", choices=["1", "2"]
     ).strip()
 
     if choice == "1":
-        default_dataset_task = "Go to huggingface and search for An-j96/SuperstoreData then go to the files tab and just download the data.csv, then stop."
-        download_path, filenames = await downloading_task_for_browser_agent(
-            default_dataset_task, api_key, model_for_browser_agent, model_api_base_url
-        )
-
-        if filenames is None:
-            return  # returns to main menu
-
-        return download_path, filenames
-
-    elif choice == "2":
         dataset_download_task = Prompt.ask(
-            "\n[bold yellow]Enter the download instructions[/bold yellow]"
+            "\n[bold yellow]Provide detailed instructions for getting the dataset. For example:\n"
+            "- Go to Hugging Face, search for An-j96/SuperstoreData, then open the Files tab and download data.csv.\n"
+            "- Go to google finance, search for Tesla and get their financials (income statement, balance sheet, cash flow) for the past 3 months."
+            "\n\n[bold yellow]Enter your instructions[/bold yellow]"
         )
+
         download_path, filenames = await downloading_task_for_browser_agent(
             dataset_download_task, api_key, model_for_browser_agent, model_api_base_url
         )
@@ -97,33 +89,30 @@ async def choice_download_dataset(
 
         return download_path, filenames
 
-    elif choice == "3":
+    elif choice == "2":
         return
 
 
 def choice_proceed_with_already_downloaded_datasets() -> list[str]:
     console.print(
         Panel(
-            "[bold green]1.[/bold green] Use default dataset (assumes was previously downloaded to './Download/data.csv')\n"
-            "[bold green]2.[/bold green] Provide path to your desired dataset(s)\n"
-            "[bold green]3.[/bold green] Back to main menu",
+            "[bold green]1.[/bold green] Provide path to your desired dataset(s)\n"
+            "[bold green]2.[/bold green] Back to main menu",
             title="Proceed with Existing Dataset",
             border_style="white",
         )
     )
 
     choice = Prompt.ask(
-        "\n[bold yellow]Enter choice[/bold yellow]", choices=["1", "2", "3"]
+        "\n[bold yellow]Enter choice[/bold yellow]", choices=["1", "2"]
     ).strip()
 
     if choice == "1":
-        paths = ["./Download/data.csv"]
-    elif choice == "2":
         paths = Prompt.ask(
             "\n[bold yellow]Enter dataset path (single path) or multiple paths separated by commas (e.g., ./Download/data.csv, ./Download/readme.md)[/bold yellow]"
         ).split(",")
         paths = [path.strip() for path in paths]
-    elif choice == "3":
+    elif choice == "2":
         return
 
     try:
@@ -212,7 +201,7 @@ if __name__ == "__main__":
     NOVITA_BASE_URL = os.getenv("NOVITA_BASE_URL")
     NOVITA_E2B_DOMAIN = os.getenv("NOVITA_E2B_DOMAIN")
     NOVITA_E2B_TEMPLATE = os.getenv("NOVITA_E2B_TEMPLATE")
-    NOVITA_MODEL_FOR_BROWSER_AGENT = "zai-org/glm-4.5v"
+    NOVITA_MODEL_FOR_BROWSER_AGENT = "qwen/qwen3-coder-480b-a35b-instruct"
     NOVITA_MODEL_FOR_EDA = "qwen/qwen3-coder-480b-a35b-instruct"
     NOVITA_SANDBOX_TIMEOUT_SECONDS = 900  # 900 seconds (15 minutes), sandbox instance will be killed automatically after.
 
