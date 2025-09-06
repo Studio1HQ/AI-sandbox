@@ -35,28 +35,35 @@ def start_eda(
         timeout=sandbox_timeout,
     ) as sandbox:
 
-        sandbox_eda = SandboxEDA(
-            sandbox, model_api_base_url, api_key_for_sandbox_and_model
-        )
+        try:
+            sandbox_eda = SandboxEDA(
+                sandbox, model_api_base_url, api_key_for_sandbox_and_model
+            )
 
-        console.print(
-            f"[bold cyan]Started Sandbox[/bold cyan] (id: {sandbox.sandbox_id})"
-        )
+            console.print(
+                f"[bold cyan]Started Sandbox[/bold cyan] (id: {sandbox.sandbox_id})"
+            )
 
-        sandbox_eda.upload_files_to_sandbox(dataset_paths, dataset_file_names)
+            sandbox_eda.upload_files_to_sandbox(dataset_paths, dataset_file_names)
 
-        sandbox_eda.eda_chat(dataset_file_names, model_for_eda)
+            sandbox_eda.eda_chat(dataset_file_names, model_for_eda)
 
-        console.print(
-            f"\n\n[bold cyan]------ EDA Session Completed for Sandbox (id: {sandbox.sandbox_id}) ------[/]"
-        )
+            console.print(
+                f"\n\n[bold cyan]------ EDA Session Completed for Sandbox (id: {sandbox.sandbox_id}) ------[/]"
+            )
 
-    console.print(f"[bold cyan]----- Closed Sandbox (id: {sandbox.sandbox_id})-----[/]")
+        finally:
+            console.print(
+                f"[bold cyan]----- Closed Sandbox (id: {sandbox.sandbox_id})-----[/]\n"
+            )
 
 
 # MAIN MENU CHOICES
 async def choice_download_dataset(
-    api_key: str, model_api_base_url: str, model_for_browser_agent: str
+    api_key: str,
+    model_api_base_url: str,
+    model_for_browser_agent: str,
+    enable_vision_for_browser_agent: bool,
 ) -> None | Tuple[str, list[str]]:
 
     console.print(
@@ -74,14 +81,19 @@ async def choice_download_dataset(
 
     if choice == "1":
         dataset_download_task = Prompt.ask(
-            "\n[bold yellow]Provide detailed instructions for getting the dataset. For example:\n"
+            "\n[bold yellow]Provide detailed web navigation instructions to obtain the dataset.[/bold yellow]\n"
+            "[dim yellow]Examples:\n"
             "- Go to Hugging Face, search for An-j96/SuperstoreData, then open the Files tab and download data.csv.\n"
-            "- Go to google finance, search for Tesla and get their financials (income statement, balance sheet, cash flow) for the past 3 months."
-            "\n\n[bold yellow]Enter your instructions[/bold yellow]"
+            "- Go to google finance, search for Tesla and from that page, get their income statement for the past 4 years. Note: First switch to annual tab, then switch to a year's tab and extract its data. Output should be csv.[/dim yellow]"
+            "\n\n[bold yellow]Instruction[/bold yellow]"
         )
 
         download_path, filenames = await downloading_task_for_browser_agent(
-            dataset_download_task, api_key, model_for_browser_agent, model_api_base_url
+            dataset_download_task,
+            api_key,
+            model_for_browser_agent,
+            model_api_base_url,
+            use_vision=enable_vision_for_browser_agent,
         )
 
         if filenames is None:
@@ -90,10 +102,10 @@ async def choice_download_dataset(
         return download_path, filenames
 
     elif choice == "2":
-        return
+        return  # return to main menu
 
 
-def choice_proceed_with_already_downloaded_datasets() -> list[str]:
+def choice_proceed_with_already_downloaded_datasets() -> None | list[str]:
     console.print(
         Panel(
             "[bold green]1.[/bold green] Provide path to your desired dataset(s)\n"
@@ -109,19 +121,37 @@ def choice_proceed_with_already_downloaded_datasets() -> list[str]:
 
     if choice == "1":
         paths = Prompt.ask(
-            "\n[bold yellow]Enter dataset path (single path) or multiple paths separated by commas (e.g., ./Download/data.csv, ./Download/readme.md)[/bold yellow]"
+            "\n[bold yellow]Enter dataset path(s) - separate multiple paths with commas (e.g., ./Download/data.csv, ./Reports/summary.txt)[/bold yellow]"
+            "\n[dim red]ℹ️  Note: Ensure file names are unique, so uploading doesn't overwrite[/dim red]"
         ).split(",")
-        paths = [path.strip() for path in paths]
+
+        paths = [
+            path.strip() for path in paths if path.strip()
+        ]  # Get only non empty string paths.
     elif choice == "2":
         return
 
     try:
+
+        # Validate file paths and check for duplicate filenames
+        filenames = set()
         for path in paths:
             if not os.path.isfile(path):
-                raise FileNotFoundError(f"File does not exist at path: {path}")
+                raise FileNotFoundError(f"Invalid path: file not found at '{path}'")
+
+            filename = os.path.basename(path)
+            if filename in filenames:
+                raise ValueError(
+                    f"Duplicate filename '{filename}' - files must have unique names"
+                )
+            filenames.add(filename)
 
     except FileNotFoundError as e:
-        console.print(f"[bold red]{e}[/bold red]")
+        console.print(f"[bold red]{str(e)}[/bold red]\n")
+        return  # return to main menu
+
+    except ValueError as e:
+        console.print(f"[bold red]{str(e)}[/bold red]\n")
         return  # return to main menu
 
     return paths
@@ -131,6 +161,7 @@ async def main(
     api_key_for_sandbox_and_model: str,
     model_api_base_url: str,
     model_for_browser_agent: str,
+    enable_vision_for_browser_agent: bool,
     model_for_eda: str,
     sandbox_domain: str,
     sandbox_template: str,
@@ -143,7 +174,7 @@ async def main(
         console.print(
             Panel(
                 "[bold white]Welcome To Agentic Exploratory Data Analysis[/bold white]\n\n"
-                "[grey]How will you like to proceed:[/grey]\n"
+                "[grey]How would you like to proceed:[/grey]\n"
                 "[grey]1.[/grey] Download a dataset first.\n"
                 "[grey]2.[/grey] Proceed with already downloaded dataset.\n"
                 "[grey]3.[/grey] Exit",
@@ -162,11 +193,12 @@ async def main(
                 api_key_for_sandbox_and_model,
                 model_api_base_url,
                 model_for_browser_agent,
+                enable_vision_for_browser_agent,
             )
             if result:
                 download_path, filenames = result
                 DATASET_PATHS = [
-                    f"{download_path}/{filename}" for filename in filenames
+                    os.path.join(download_path, filename) for filename in filenames
                 ]
                 DATASET_FILE_NAMES = filenames
             else:
@@ -202,6 +234,9 @@ if __name__ == "__main__":
     NOVITA_E2B_DOMAIN = os.getenv("NOVITA_E2B_DOMAIN")
     NOVITA_E2B_TEMPLATE = os.getenv("NOVITA_E2B_TEMPLATE")
     NOVITA_MODEL_FOR_BROWSER_AGENT = "qwen/qwen3-coder-480b-a35b-instruct"
+    ENABLE_VISION_FOR_BROWSER_AGENT = (
+        False  # If true make sure the browser agent model has vision capabilities.
+    )
     NOVITA_MODEL_FOR_EDA = "qwen/qwen3-coder-480b-a35b-instruct"
     NOVITA_SANDBOX_TIMEOUT_SECONDS = 900  # 900 seconds (15 minutes), sandbox instance will be killed automatically after.
 
@@ -210,6 +245,7 @@ if __name__ == "__main__":
             NOVITA_API_KEY,
             NOVITA_BASE_URL,
             NOVITA_MODEL_FOR_BROWSER_AGENT,
+            ENABLE_VISION_FOR_BROWSER_AGENT,
             NOVITA_MODEL_FOR_EDA,
             NOVITA_E2B_DOMAIN,
             NOVITA_E2B_TEMPLATE,

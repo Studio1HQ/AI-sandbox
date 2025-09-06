@@ -8,7 +8,7 @@ An example command line application showing how to build an EDA (Exploratory Dat
   Takes natural language instructions to navigate websites and get datasets.  
   _Example_:  
   > "Go to Hugging Face and search for `An-j96/SuperstoreData`, then go to the files tab and just download the `data.csv`."
-  > "Go to google finance, search for Tesla and get their financials (income statement, balance sheet, cash flow) for the past 3 months."
+  > "Go to google finance, search for Tesla and from that page, get their income statement for the past 4 years. Note: First switch to annual tab, then switch to a year's tab and extract its data. Output should be csv."
 
 - **Novita Model API**:  
   - Vision language model can be used to power the browser use web navigation.  
@@ -50,15 +50,15 @@ uv sync
 Create a .env file in the root directory and add your API key and the below:
 
 ```bash
-NOVITA_API_KEY = "<your-novita-api-key>"
-NOVITA_BASE_URL = "https://api.novita.ai/v3/openai"
+NOVITA_API_KEY="<your-novita-api-key>"
+NOVITA_BASE_URL="https://api.novita.ai/v3/openai"
 
-NOVITA_E2B_DOMAIN = "sandbox.novita.ai"
-NOVITA_E2B_TEMPLATE = "code-interpreter-v1"
+NOVITA_E2B_DOMAIN="sandbox.novita.ai"
+NOVITA_E2B_TEMPLATE="code-interpreter-v1"
 ```
 
 
-### 5. Run the Application
+### 4. Run the Application
 
 ```bash
 uv run main.py

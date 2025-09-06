@@ -34,7 +34,7 @@ async def downloading_task_for_browser_agent(
     api_key: str,
     model: str,
     model_api_base_url: str,
-    use_vision: bool = False,
+    use_vision: bool,
     download_dir_path: str = "./Download",
 ) -> Tuple[str, list[str]]:
     """
@@ -52,13 +52,14 @@ async def downloading_task_for_browser_agent(
             model=model,
             api_key=api_key,
             max_completion_tokens=20_000,
-            frequency_penalty=0,  # These penalty slightly affects tool use so will set to 0.
+            frequency_penalty=0,  # This penalty can slightly affect tool use; keep at 0.
         ),
         use_vision=use_vision,
         vision_detail_level="auto",  # available options ['low', 'high', 'auto']; note high detail means more token cost; low should suffice for most tasks.
         browser_session=BrowserSession(
             browser_profile=BrowserProfile(
-                downloads_path=download_dir_path, user_data_dir="./browser_user_data"
+                downloads_path=download_dir_path,
+                user_data_dir=None,  # "./browser_user_data"
             )
         ),  # set the download directory path for the browser.
         controller=Controller(
@@ -133,7 +134,7 @@ async def downloading_task_for_browser_agent(
         file_results = None
         console.print(
             Panel(
-                f"[bold red]Error:[/bold red] {e}",
+                f"[bold red]Error:[/bold red] {str(e)}\n",
                 title="Execution Error",
                 border_style="red",
             )
