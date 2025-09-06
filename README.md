@@ -79,7 +79,8 @@ Creating a website with insight and analysis from a dataset
 
 
 
-https://github.com/user-attachments/assets/1488786a-a0f4-483c-b64b-0450fa36bb5a
+
+https://github.com/user-attachments/assets/3f973e8d-1136-4032-8245-be8a17df2824
 
 
 
