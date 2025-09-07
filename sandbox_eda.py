@@ -241,7 +241,7 @@ class SandboxEDA:
 
         # Iterate through the base64 encoded images and save them to a file with name format: temp-{timestamp}.png to ./temp_image_output dir
         for b64_image in image_outputs:
-            timestamp = int(time.time())
+            timestamp = int(time.time_ns())
             image_filename = Path(f"./temp_image_output/temp-{timestamp}.png")
 
             # Will create the temp_image_output directory if it doesn't exist already.
@@ -332,7 +332,7 @@ class SandboxEDA:
             return "Sync Successful"
 
         except Exception as e:
-            return e
+            return str(e)
 
     def delete_from_user_sync_folder(self, path_on_user_sync_folder):
         """
@@ -368,7 +368,7 @@ class SandboxEDA:
             return "Deletion Successful"
 
         except Exception as e:
-            return e
+            return str(e)
 
     def list_files_in_sandbox_main_dir(self) -> list[str]:
         return [i.name for i in self.sandbox.files.list("/home/user")]
@@ -434,7 +434,7 @@ class SandboxEDA:
                     model=model_for_eda,
                     messages=messages,
                     tools=AVAILABLE_FUNCTION_CALL_SCHEMAS,
-                    frequency_penalty=0,  # These penalty slightly affects tool use so will set to 0.
+                    frequency_penalty=0,  # This penalty can slightly affect tool use; keep at 0.
                 )
 
                 response_message = response.choices[0].message
@@ -521,7 +521,7 @@ class SandboxEDA:
                                     "tool_call_id": tool_call.id,
                                     "role": "tool",  # Indicates this message is from tool use
                                     "name": name,
-                                    "content": str(sync_result),
+                                    "content": sync_result,
                                 }
                             )
 
@@ -559,7 +559,7 @@ class SandboxEDA:
                                     "tool_call_id": tool_call.id,
                                     "role": "tool",  # Indicates this message is from tool use
                                     "name": name,
-                                    "content": str(delete_result),
+                                    "content": delete_result,
                                 }
                             )
 
