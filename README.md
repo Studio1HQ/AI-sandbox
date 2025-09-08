@@ -7,7 +7,8 @@ An example command line application showing how to build an EDA (Exploratory Dat
 - **Browser Use**:  
   Takes natural language instructions to navigate websites and get datasets.  
   _Example_:  
-  > "Go to Hugging Face and search for `An-j96/SuperstoreData`, then go to the files tab and just download the `data.csv`."
+  > "Go to Hugging Face, search for An-j96/SuperstoreData and open its page, then navigate to the Files tab and download the data csv file."
+  
   > "Go to google finance, search for Tesla and from that page, get their income statement for the past 4 years. Note: First switch to annual tab, then switch to a year's tab and extract its data. Output should be csv."
 
 - **Novita Model API**:  
