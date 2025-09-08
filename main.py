@@ -10,6 +10,7 @@ from rich.prompt import Prompt
 
 from browser_agent import downloading_task_for_browser_agent
 from sandbox_eda import SandboxEDA
+from pathlib import Path
 
 # Load environment variables from .env file
 load_dotenv()
@@ -83,7 +84,7 @@ async def choice_download_dataset(
         dataset_download_task = Prompt.ask(
             "\n[bold yellow]Provide detailed web navigation instructions to obtain the dataset.[/bold yellow]\n"
             "[dim yellow]Examples:\n"
-            "- Go to Hugging Face, search for An-j96/SuperstoreData, then open the Files tab and download data.csv.\n"
+            "- Go to Hugging Face, search for An-j96/SuperstoreData and open its page, then navigate to the Files tab and download the data csv file.\n"
             "- Go to google finance, search for Tesla and from that page, get their income statement for the past 4 years. Note: First switch to annual tab, then switch to a year's tab and extract its data. Output should be csv.[/dim yellow]"
             "\n\n[bold yellow]Instruction[/bold yellow]"
         )
@@ -198,7 +199,7 @@ async def main(
             if result:
                 download_path, filenames = result
                 DATASET_PATHS = [
-                    os.path.join(download_path, filename) for filename in filenames
+                    str(Path(download_path) / filename) for filename in filenames
                 ]
                 DATASET_FILE_NAMES = filenames
             else:
