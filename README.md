@@ -66,23 +66,32 @@ uv run main.py
 ```
 
 ## 🖼️ Screenshots
-**1.**
+
 ![Screenshot_1](/screenshots/screenshot_1.png)
 
-**2.**
+
 ![Screenshot_2](/screenshots/screenshot_2.png)
 
-**3.**
+
 ![Screenshot_3](/screenshots/screenshot_3.png)
 
 ## 📽️ Demo 1
 Pdf report based on a dataset
 
 
+https://github.com/user-attachments/assets/b8231fdd-7ef0-4cc6-9115-7e621c0b85b1
+
+
+
+
 ## 📽️ Demo 2
 Creating a website with insight and analysis from a dataset
 
-https://github.com/user-attachments/assets/3f973e8d-1136-4032-8245-be8a17df2824
+
+https://github.com/user-attachments/assets/576f18f9-a0d2-4fa2-a7ef-c65888ab37ca
+
+
+
 
 
 
