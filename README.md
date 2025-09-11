@@ -75,11 +75,12 @@ uv run main.py
 **3.**
 ![Screenshot_3](/screenshots/screenshot_3.png)
 
-## 📽️ Demo
+## 📽️ Demo 1
+Pdf report based on a dataset
+
+
+## 📽️ Demo 2
 Creating a website with insight and analysis from a dataset
-
-
-
 
 https://github.com/user-attachments/assets/3f973e8d-1136-4032-8245-be8a17df2824
 
